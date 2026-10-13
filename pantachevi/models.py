@@ -30,6 +30,7 @@ class AgentReport(BaseModel):
     agent: str
     status: Status
     summary: str
+    summary_te: str | None = None  # Telugu version of `summary`
     evidence: dict[str, float | int | str | bool | None] = Field(default_factory=dict)
     confidence: float = Field(ge=0.0, le=1.0)
     # True when any rule used to reach this report is still a sample value.
@@ -42,6 +43,11 @@ class Verdict(BaseModel):
     conflict: bool
     conflict_detail: str | None = None
     follow_up: str | None = None
+    # Telugu versions of the fields above, built from the same data as the English.
+    action_te: str | None = None
+    reason_te: str | None = None
+    conflict_detail_te: str | None = None
+    follow_up_te: str | None = None
 
 
 class Decision(BaseModel):
@@ -52,3 +58,4 @@ class Decision(BaseModel):
     verdict: Verdict
     rules_verified: bool
     disclaimer: str
+    disclaimer_te: str | None = None

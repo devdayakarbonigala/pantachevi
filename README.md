@@ -21,13 +21,13 @@ This is the day-1 build. Read this table before judging what works.
 | Crop stage agent | Working; last spray date comes from logged activities |
 | Market agent | Uses **mandi prices typed in** by the farmer or trader (`log_price`, or the form on the web page). Says so plainly when no recent price exists. No live feed |
 | Supervisor and conflict reconciliation | Working, deterministic rules |
-| Simulated Alexa+ web page (typed input) | Working |
+| Simulated Alexa+ web page | Working, English and Telugu. Voice input and spoken replies use the browser's own speech tools (Chrome or Edge on Android and desktop). Typed input always works |
 | Rules file | **Every value is a sample placeholder, not agronomic advice** |
 | Live mandi price feed (data.gov.in / Agmarknet) | Not yet, needs an API key |
 | PostgreSQL memory (fields, sprays, pickings) with `log_activity` and `register_field` | Working, tested against a real PostgreSQL 16. Falls back to in-memory when `DATABASE_URL` is unset |
 | Redis cache | Not yet (weather cache is in-process for now) |
 | Amazon Bedrock + Strands supervisor | Not yet |
-| Telugu voice, spoken replies | Not yet |
+| Telugu wording | Written by an AI assistant as fixed sentences, **not yet reviewed by a native speaker**. Telugu speech depends on the device having a Telugu voice |
 
 Nothing in this repository should be used for real farming decisions until the rules in
 `rules/chilli_guntur.json` are verified against a named source.
@@ -72,6 +72,17 @@ async def main():
 
 asyncio.run(main())
 ```
+
+### Telugu and voice
+
+Every reply carries English and Telugu text built from the same numbers (`summary_te`,
+`action_te`, ...), so the two cannot drift apart; tests check that each English sentence has
+a Telugu twin with the same figures. The page has an English / తెలుగు switch. The Speak
+button uses the browser's speech recognition (`te-IN` or `en-IN`) and the Listen button uses
+its speech synthesis. If the device has no Telugu voice or the browser has no speech
+recognition, the page says so and falls back to text and typing. Spoken replies are short on
+purpose: the call and the follow-up, with the reasons left on screen. Telugu questions are
+understood by keyword (for example పిచికారీ, కోత, ధర), not by a language model.
 
 ### Memory (PostgreSQL)
 

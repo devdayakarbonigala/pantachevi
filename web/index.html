@@ -14,8 +14,8 @@
     --chilli: #9E2A1D;
     --olive: #3F5F2B;
     --ochre: #7F5F0E;
-    --serif: Charter, "Iowan Old Style", Georgia, serif;
-    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --serif: Charter, "Iowan Old Style", Georgia, "Noto Serif Telugu", "Nirmala UI", Gautami, "Telugu Sangam MN", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Telugu", "Nirmala UI", Gautami, "Telugu Sangam MN", sans-serif;
   }
   * { box-sizing: border-box; }
   html { background: var(--paper); }
@@ -75,6 +75,17 @@
   .status.caution { color: var(--ochre); }
   .summary { margin: 0; }
   .evidence { margin: 6px 0 0; font-family: var(--sans); font-size: 13px; color: var(--muted); }
+  .head-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+  .lang { display: flex; border: 1px solid var(--ink); }
+  .lang button { background: transparent; color: var(--ink); border: 0; padding: 8px 14px; font-weight: 600; }
+  .lang button + button { border-left: 1px solid var(--ink); }
+  .lang button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+  button.alt { background: transparent; color: var(--ink); }
+  button.alt.live { background: var(--ink); color: var(--paper); }
+  button[hidden] { display: none; }
+  .voice-status { margin: 8px 0 0; font-family: var(--sans); font-size: 14px; color: var(--muted); min-height: 1.4em; }
+  .listen-row { margin: 14px 0 0; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .listen-note { font-family: var(--sans); font-size: 14px; color: var(--ochre); margin: 0; }
   .price { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--rule); }
   .price .pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
   .price .pair div + div { min-width: 0; }
@@ -106,65 +117,145 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>PantaChevi</h1>
-    <p>Hot Call for your chilli field. Simulated Alexa+ desk, demo field in Guntur.</p>
+    <div class="head-row">
+      <h1>PantaChevi</h1>
+      <div class="lang" role="group" aria-label="Language">
+        <button type="button" data-lang="en" aria-pressed="true">English</button>
+        <button type="button" data-lang="te" aria-pressed="false">తెలుగు</button>
+      </div>
+    </div>
+    <p data-i18n="tagline"></p>
   </header>
 
   <main>
     <section class="ask" aria-labelledby="ask-h">
-      <h2 id="ask-h">Ask</h2>
+      <h2 id="ask-h" data-i18n="ask_h"></h2>
       <form id="form">
-        <label for="q">Your question about the field</label>
+        <label for="q" data-i18n="q_label"></label>
         <textarea id="q" name="q" maxlength="500" required>Should I spray tomorrow?</textarea>
         <div class="row">
-          <button type="submit" id="go">Ask for the call</button>
+          <button type="submit" id="go" data-i18n="ask_btn"></button>
+          <button type="button" id="mic" class="alt" hidden></button>
         </div>
-        <p class="field-note">Field: demo-1, Teja chilli, Guntur mandi. Typed input only in this build.</p>
+        <p id="voice-status" class="voice-status" role="status" aria-live="polite"></p>
+        <p class="field-note" data-i18n="field_note"></p>
       </form>
       <form id="price-form" class="price" aria-labelledby="price-h">
-        <h2 id="price-h">Enter today's mandi price</h2>
+        <h2 id="price-h" data-i18n="price_h"></h2>
         <div class="pair">
           <div>
-            <label for="mandi">Mandi</label>
+            <label for="mandi" data-i18n="mandi_label"></label>
             <input id="mandi" name="mandi" type="text" maxlength="60" value="Guntur (demo)" required>
           </div>
           <div>
-            <label for="price">Rs per quintal</label>
+            <label for="price" data-i18n="price_label"></label>
             <input id="price" name="price" type="number" inputmode="numeric" min="1000" max="100000" step="1" placeholder="16200" required>
           </div>
         </div>
         <div class="row">
-          <button type="submit" id="price-go">Save price</button>
+          <button type="submit" id="price-go" data-i18n="price_btn"></button>
         </div>
-        <p class="field-note">The market report compares today's price with one entered about a week earlier. The demo field already has both.</p>
+        <p class="field-note" data-i18n="price_note"></p>
         <p id="price-msg" class="price-msg" role="status" aria-live="polite"></p>
       </form>
-      <ul class="examples" aria-label="Example questions">
-        <li><button type="button" data-q="Should I spray tomorrow?">Should I spray tomorrow?</button></li>
-        <li><button type="button" data-q="When should I pick and sell?">When should I pick and sell?</button></li>
-        <li><button type="button" data-q="What should I do this week?">What should I do this week?</button></li>
-      </ul>
+      <ul class="examples" aria-label="Example questions" id="examples"></ul>
     </section>
 
     <section class="answer" aria-labelledby="ans-h">
-      <h2 id="ans-h">The call and how it was made</h2>
+      <h2 id="ans-h" data-i18n="ans_h"></h2>
       <div id="out" aria-live="polite">
-        <p class="placeholder">Ask a question to see the weather, crop stage and market reports and the single call that comes out of them.</p>
+        <p class="placeholder" data-i18n="placeholder"></p>
       </div>
     </section>
   </main>
 
   <footer>
-    <a href="/legal">Terms and privacy</a>. Not affiliated with Amazon. Built for the Build, Ship, Shape: Amazon Developer Hackathon.
+    <a href="/legal" data-i18n="legal_link"></a><span data-i18n="footer_rest"></span>
   </footer>
 </div>
 
 <script>
 (function () {
+  var STR = {
+    en: {
+      tagline: 'Hot Call for your chilli field. Simulated Alexa+ desk, demo field in Guntur.',
+      ask_h: 'Ask', q_label: 'Your question about the field', ask_btn: 'Ask for the call',
+      mic: 'Speak', mic_stop: 'Stop', listening: 'Listening. Speak your question.',
+      field_note: 'Field: demo-1, Teja chilli, Guntur mandi. Ask by voice or by typing.',
+      price_h: "Enter today's mandi price", mandi_label: 'Mandi', price_label: 'Rs per quintal',
+      price_btn: 'Save price',
+      price_note: "The market report compares today's price with one entered about a week earlier. The demo field already has both.",
+      ans_h: 'The call and how it was made',
+      placeholder: 'Ask a question to see the weather, crop stage and market reports and the single call that comes out of them.',
+      legal_link: 'Terms and privacy',
+      footer_rest: '. Not affiliated with Amazon. Built for the Build, Ship, Shape: Amazon Developer Hackathon.',
+      hot_call: 'Hot Call', confidence: 'confidence', source: 'data source',
+      agents: { weather: 'weather', crop_stage: 'crop stage', market: 'market' },
+      status: { favourable: 'favourable', unfavourable: 'unfavourable', caution: 'caution' },
+      sample_banner: 'Sample rules: the spray and harvest thresholds in this build are placeholders and have not been verified against a real source.',
+      listen: 'Listen to the call', stop: 'Stop',
+      no_voice: 'This device has no English voice, so the call is shown as text only.',
+      no_recog: 'Voice input does not work in this browser. Please type your question.',
+      recog_error: 'Could not understand the speech. Try again or type your question.',
+      mic_denied: 'Microphone is blocked. Allow it in the browser settings or type your question.',
+      recog_lang: 'This browser cannot recognise this language by voice. Please type your question.',
+      timeout: 'The server did not answer within 15 seconds. Please try again.',
+      failed: 'Could not get a call. ', saving: 'Saving...',
+      price_int: 'Enter the price as a whole number.', price_fail: 'Could not save the price.',
+      price_unreach: 'Could not reach the server.',
+      price_saved: function (p) { return 'Saved Rs ' + p + ' per quintal for today. Ask again to see it in the call.'; },
+      saved_warn: 'Saved. ',
+      examples: ['Should I spray tomorrow?', 'When should I pick and sell?', 'What should I do this week?'],
+      default_q: 'Should I spray tomorrow?'
+    },
+    te: {
+      tagline: 'మీ మిరప పొలానికి వెంటనే సలహా. అలెక్సా+ నమూనా డెస్క్, గుంటూరులో డెమో పొలం.',
+      ask_h: 'అడగండి', q_label: 'మీ పొలం గురించి ప్రశ్న', ask_btn: 'సలహా అడగండి',
+      mic: 'మాట్లాడండి', mic_stop: 'ఆపండి', listening: 'వింటున్నాను. మీ ప్రశ్న చెప్పండి.',
+      field_note: 'పొలం: demo-1, తేజ మిరప, గుంటూరు మార్కెట్. మాటతో లేదా టైప్ చేసి అడగవచ్చు.',
+      price_h: 'ఈరోజు మార్కెట్ ధర నమోదు చేయండి', mandi_label: 'మార్కెట్ యార్డు', price_label: 'క్వింటాల్‌కు ₹',
+      price_btn: 'ధర సేవ్ చేయండి',
+      price_note: 'మార్కెట్ నివేదిక ఈరోజు ధరను ఒక వారం క్రితం నమోదైన ధరతో పోలుస్తుంది. డెమో పొలంలో రెండూ ఉన్నాయి.',
+      ans_h: 'సలహా, అది ఎలా వచ్చిందో',
+      placeholder: 'ప్రశ్న అడిగితే వాతావరణం, పంట దశ, మార్కెట్ నివేదికలు, వాటి నుంచి వచ్చిన ఒకే సలహా కనిపిస్తాయి.',
+      legal_link: 'నిబంధనలు మరియు గోప్యత (English)',
+      footer_rest: '. అమెజాన్‌తో సంబంధం లేదు. Build, Ship, Shape: Amazon Developer Hackathon కోసం తయారు చేసింది.',
+      hot_call: 'హాట్ కాల్', confidence: 'నమ్మకం', source: 'సమాచార మూలం',
+      agents: { weather: 'వాతావరణం', crop_stage: 'పంట దశ', market: 'మార్కెట్' },
+      status: { favourable: 'అనుకూలం', unfavourable: 'అననుకూలం', caution: 'జాగ్రత్త' },
+      sample_banner: 'నమూనా నియమాలు: ఈ వెర్షన్‌లో పిచికారీ, కోత పరిమితులు తాత్కాలిక విలువలు మాత్రమే. నిజమైన మూలంతో ఇంకా సరిచూడలేదు.',
+      listen: 'సలహా వినండి', stop: 'ఆపండి',
+      no_voice: 'ఈ పరికరంలో తెలుగు స్వరం లేదు, అందుకే సలహాను అక్షరాల్లో మాత్రమే చూపిస్తున్నాను.',
+      no_recog: 'ఈ బ్రౌజర్‌లో మాటతో అడగడం పనిచేయదు. దయచేసి టైప్ చేయండి.',
+      recog_error: 'మాట అర్థం కాలేదు. మళ్లీ ప్రయత్నించండి లేదా టైప్ చేయండి.',
+      mic_denied: 'మైక్ అనుమతి లేదు. బ్రౌజర్ సెట్టింగ్స్‌లో అనుమతించండి లేదా టైప్ చేయండి.',
+      recog_lang: 'ఈ బ్రౌజర్ తెలుగు మాటను గుర్తించలేదు. దయచేసి టైప్ చేయండి.',
+      timeout: 'సర్వర్ 15 సెకన్లలో స్పందించలేదు. మళ్లీ ప్రయత్నించండి.',
+      failed: 'సలహా తీసుకురాలేకపోయాను. ', saving: 'సేవ్ అవుతోంది...',
+      price_int: 'ధరను పూర్ణ సంఖ్యగా నమోదు చేయండి.', price_fail: 'ధరను సేవ్ చేయలేకపోయాను.',
+      price_unreach: 'సర్వర్‌ను చేరుకోలేకపోయాను.',
+      price_saved: function (p) { return 'ఈరోజు క్వింటాల్‌కు ₹' + p + ' సేవ్ అయింది. మళ్లీ అడిగితే సలహాలో కనిపిస్తుంది.'; },
+      saved_warn: 'సేవ్ అయింది. ',
+      examples: ['రేపు పిచికారీ చేయాలా?', 'ఎప్పుడు కోసి అమ్మాలి?', 'ఈ వారం ఏం చేయాలి?'],
+      default_q: 'రేపు పిచికారీ చేయాలా?'
+    }
+  };
+  var SPEECH_LANG = { en: 'en-IN', te: 'te-IN' };
+
+  var lang = 'en';
+  try { var saved = localStorage.getItem('pantachevi_lang'); if (saved === 'te' || saved === 'en') lang = saved; } catch (e) {}
+
   var form = document.getElementById('form');
   var q = document.getElementById('q');
   var go = document.getElementById('go');
+  var mic = document.getElementById('mic');
+  var vstatus = document.getElementById('voice-status');
   var out = document.getElementById('out');
+  var examples = document.getElementById('examples');
+  var lastDecision = null;
+  var lastQuestionWasVoice = false;
+
+  function T(key) { return STR[lang][key]; }
 
   function el(tag, cls, text) {
     var n = document.createElement(tag);
@@ -173,6 +264,46 @@
     return n;
   }
 
+  /* ---------- speech output ---------- */
+  var synth = window.speechSynthesis || null;
+
+  function pickVoice(code) {
+    if (!synth) return null;
+    var prefix = code.split('-')[0].toLowerCase();
+    var voices = synth.getVoices();
+    var exact = voices.filter(function (v) { return v.lang && v.lang.replace('_', '-').toLowerCase() === code.toLowerCase(); });
+    var loose = voices.filter(function (v) { return v.lang && v.lang.toLowerCase().indexOf(prefix) === 0; });
+    return exact[0] || loose[0] || null;
+  }
+
+  function stopSpeaking() { if (synth) synth.cancel(); }
+
+  function callText(d) {
+    var v = d.verdict;
+    var te = lang === 'te';
+    // Short on purpose: the call and the follow-up. The reasons stay on screen.
+    var parts = [te ? v.action_te : v.action, te ? v.follow_up_te : v.follow_up];
+    return parts.filter(Boolean).join(' ');
+  }
+
+  function speakCall(d) {
+    var note = out.querySelector('.listen-note');
+    if (note) note.textContent = '';
+    if (!synth || typeof SpeechSynthesisUtterance === 'undefined') { if (note) note.textContent = T('no_voice'); return; }
+    var code = SPEECH_LANG[lang];
+    var voice = pickVoice(code);
+    if (!voice) { if (note) note.textContent = T('no_voice'); return; }
+    stopSpeaking();
+    var u = new SpeechSynthesisUtterance(callText(d));
+    u.lang = code;
+    u.voice = voice;
+    u.rate = 0.95;
+    synth.speak(u);
+  }
+
+  if (synth && synth.addEventListener) synth.addEventListener('voiceschanged', function () {});
+
+  /* ---------- rendering ---------- */
   function skeleton() {
     out.replaceChildren();
     out.appendChild(el('div', 'sk lg'));
@@ -193,41 +324,58 @@
   }
 
   function render(d) {
+    var te = lang === 'te';
     out.replaceChildren();
     var v = el('div', 'verdict');
-    v.appendChild(el('div', 'tag', 'Hot Call'));
-    v.appendChild(el('p', 'action', d.verdict.action));
-    v.appendChild(el('p', 'why', d.verdict.reason));
-    if (d.verdict.conflict && d.verdict.conflict_detail) v.appendChild(el('p', 'conflict', d.verdict.conflict_detail));
-    if (d.verdict.follow_up) v.appendChild(el('p', 'followup', d.verdict.follow_up));
+    v.appendChild(el('div', 'tag', T('hot_call')));
+    v.appendChild(el('p', 'action', te ? (d.verdict.action_te || d.verdict.action) : d.verdict.action));
+    v.appendChild(el('p', 'why', te ? (d.verdict.reason_te || d.verdict.reason) : d.verdict.reason));
+    var cd = te ? (d.verdict.conflict_detail_te || d.verdict.conflict_detail) : d.verdict.conflict_detail;
+    if (d.verdict.conflict && cd) v.appendChild(el('p', 'conflict', cd));
+    var fu = te ? (d.verdict.follow_up_te || d.verdict.follow_up) : d.verdict.follow_up;
+    if (fu) v.appendChild(el('p', 'followup', fu));
+
+    var lrow = el('div', 'listen-row');
+    var lbtn = el('button', 'alt', T('listen'));
+    lbtn.type = 'button';
+    lbtn.addEventListener('click', function () { speakCall(d); });
+    var sbtn = el('button', 'alt', T('stop'));
+    sbtn.type = 'button';
+    sbtn.addEventListener('click', stopSpeaking);
+    lrow.appendChild(lbtn);
+    lrow.appendChild(sbtn);
+    lrow.appendChild(el('p', 'listen-note'));
+    v.appendChild(lrow);
     out.appendChild(v);
 
     var ul = el('ul', 'reports');
     d.reports.forEach(function (r) {
       var li = el('li');
-      var left = el('div', 'agent', r.agent.replace(/_/g, ' '));
-      left.appendChild(el('span', 'status ' + r.status, r.status));
+      var left = el('div', 'agent', T('agents')[r.agent] || r.agent.replace(/_/g, ' '));
+      left.appendChild(el('span', 'status ' + r.status, T('status')[r.status] || r.status));
       var right = el('div');
-      right.appendChild(el('p', 'summary', r.summary));
-      right.appendChild(el('p', 'evidence', evidenceLine(r.evidence) + '   confidence: ' + r.confidence));
+      right.appendChild(el('p', 'summary', te ? (r.summary_te || r.summary) : r.summary));
+      var ev = te
+        ? (r.evidence.data_source ? T('source') + ': ' + r.evidence.data_source + '   ' : '') + T('confidence') + ': ' + r.confidence
+        : evidenceLine(r.evidence) + '   confidence: ' + r.confidence;
+      right.appendChild(el('p', 'evidence', ev));
       li.appendChild(left);
       li.appendChild(right);
       ul.appendChild(li);
     });
     out.appendChild(ul);
 
-    if (!d.rules_verified) {
-      out.appendChild(el('p', 'sample-banner', 'Sample rules: the spray and harvest thresholds in this build are placeholders and have not been verified against a real source.'));
-    }
-    out.appendChild(el('p', 'disclaimer', d.disclaimer));
+    if (!d.rules_verified) out.appendChild(el('p', 'sample-banner', T('sample_banner')));
+    out.appendChild(el('p', 'disclaimer', te ? (d.disclaimer_te || d.disclaimer) : d.disclaimer));
   }
 
-  function showError(msg) {
-    out.replaceChildren(el('p', 'error', msg));
-  }
+  function showError(msg) { out.replaceChildren(el('p', 'error', msg)); }
 
-  async function ask(text) {
+  /* ---------- asking ---------- */
+  async function ask(text, spoken) {
     go.disabled = true;
+    lastQuestionWasVoice = !!spoken;
+    stopSpeaking();
     skeleton();
     var ctl = new AbortController();
     var timer = setTimeout(function () { ctl.abort(); }, 15000);
@@ -238,33 +386,121 @@
         body: JSON.stringify({ field_id: 'demo-1', question: text }),
         signal: ctl.signal
       });
-      if (!res.ok) throw new Error('The server answered with status ' + res.status + '.');
-      render(await res.json());
+      if (!res.ok) throw new Error(res.status);
+      lastDecision = await res.json();
+      render(lastDecision);
+      if (spoken) speakCall(lastDecision);
     } catch (e) {
-      var timedOut = e && e.name === 'AbortError';
-      showError(timedOut ? 'The server did not answer within 15 seconds. Please try again.'
-                         : 'Could not get a call. ' + (e && e.message ? e.message : ''));
+      lastDecision = null;
+      showError(e && e.name === 'AbortError' ? T('timeout') : T('failed') + (e && e.message ? '(' + e.message + ')' : ''));
     } finally {
       clearTimeout(timer);
       go.disabled = false;
     }
   }
 
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var text = q.value.trim();
+    if (text.length >= 2) ask(text, false);
+  });
+
+  /* ---------- speech input ---------- */
+  var Recog = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var recog = null;
+  var listening = false;
+
+  function setStatus(text) { vstatus.textContent = text || ''; }
+
+  function setMicLive(on) {
+    listening = on;
+    mic.classList.toggle('live', on);
+    mic.textContent = on ? T('mic_stop') : T('mic');
+  }
+
+  function startListening() {
+    if (!Recog) { setStatus(T('no_recog')); return; }
+    stopSpeaking();
+    recog = new Recog();
+    recog.lang = SPEECH_LANG[lang];
+    recog.interimResults = true;
+    recog.continuous = false;
+    recog.maxAlternatives = 1;
+    var finalText = '';
+    var failed = false;
+    recog.onresult = function (ev) {
+      var text = '';
+      for (var i = 0; i < ev.results.length; i++) text += ev.results[i][0].transcript;
+      q.value = text;
+      if (ev.results[ev.results.length - 1].isFinal) finalText = text.trim();
+    };
+    recog.onerror = function (ev) {
+      failed = true;
+      var code = ev && ev.error;
+      if (code === 'not-allowed' || code === 'service-not-allowed') setStatus(T('mic_denied'));
+      else if (code === 'language-not-supported') setStatus(T('recog_lang'));
+      else if (code === 'aborted') failed = false;
+      else setStatus(T('recog_error'));
+    };
+    recog.onend = function () {
+      setMicLive(false);
+      if (!failed && finalText.length >= 2) { setStatus(''); ask(finalText, true); }
+      else if (!failed && !finalText) setStatus(T('recog_error'));
+    };
+    try {
+      recog.start();
+      setMicLive(true);
+      setStatus(T('listening'));
+    } catch (err) {
+      setMicLive(false);
+      setStatus(T('recog_error'));
+    }
+  }
+
+  mic.addEventListener('click', function () {
+    if (listening && recog) { recog.stop(); return; }
+    startListening();
+  });
+
+  /* ---------- language ---------- */
+  function applyLang(prevLang) {
+    document.documentElement.lang = lang;
+    document.querySelectorAll('[data-i18n]').forEach(function (n) { n.textContent = T(n.getAttribute('data-i18n')); });
+    document.querySelectorAll('.lang button').forEach(function (b) {
+      b.setAttribute('aria-pressed', b.getAttribute('data-lang') === lang ? 'true' : 'false');
+    });
+    examples.replaceChildren();
+    T('examples').forEach(function (text) {
+      var li = el('li');
+      var b = el('button', null, text);
+      b.type = 'button';
+      b.addEventListener('click', function () { q.value = text; ask(text, false); });
+      li.appendChild(b);
+      examples.appendChild(li);
+    });
+    // Swap the question box only if the person has not changed it from the default.
+    if (prevLang && q.value.trim() === STR[prevLang].default_q) q.value = T('default_q');
+    if (!prevLang) q.value = T('default_q');
+    if (Recog) { mic.hidden = false; setMicLive(false); }
+    else { mic.hidden = true; setStatus(T('no_recog')); }
+    setStatus(Recog ? '' : T('no_recog'));
+    if (lastDecision) render(lastDecision);
+    pmsg.textContent = ''; pmsg.className = 'price-msg';
+  }
+
+  /* ---------- price form ---------- */
   var pform = document.getElementById('price-form');
   var pmsg = document.getElementById('price-msg');
   var pgo = document.getElementById('price-go');
 
-  function priceMsg(kind, text) {
-    pmsg.className = 'price-msg ' + kind;
-    pmsg.textContent = text;
-  }
+  function priceMsg(kind, text) { pmsg.className = 'price-msg ' + kind; pmsg.textContent = text; }
 
   pform.addEventListener('submit', async function (e) {
     e.preventDefault();
     var price = parseInt(document.getElementById('price').value, 10);
-    if (!(price > 0)) { priceMsg('bad', 'Enter the price as a whole number.'); return; }
+    if (!(price > 0)) { priceMsg('bad', T('price_int')); return; }
     pgo.disabled = true;
-    priceMsg('warn', 'Saving...');
+    priceMsg('warn', T('saving'));
     var ctl = new AbortController();
     var timer = setTimeout(function () { ctl.abort(); }, 15000);
     try {
@@ -276,32 +512,34 @@
       });
       var body = await res.json().catch(function () { return {}; });
       if (!res.ok) {
-        priceMsg('bad', typeof body.detail === 'string' ? body.detail : 'Could not save the price.');
+        priceMsg('bad', typeof body.detail === 'string' ? body.detail : T('price_fail'));
       } else if (body.warnings && body.warnings.length) {
-        priceMsg('warn', 'Saved. ' + body.warnings[0]);
+        priceMsg('warn', T('saved_warn') + body.warnings[0]);
       } else {
-        priceMsg('ok', 'Saved Rs ' + price.toLocaleString('en-IN') + ' per quintal for today. Ask again to see it in the call.');
+        priceMsg('ok', T('price_saved')(price.toLocaleString('en-IN')));
       }
     } catch (err) {
-      priceMsg('bad', err && err.name === 'AbortError' ? 'The server did not answer within 15 seconds.' : 'Could not reach the server.');
+      priceMsg('bad', err && err.name === 'AbortError' ? T('timeout') : T('price_unreach'));
     } finally {
       clearTimeout(timer);
       pgo.disabled = false;
     }
   });
 
-  form.addEventListener('submit', function (e) {
-    e.preventDefault();
-    var text = q.value.trim();
-    if (text.length >= 2) ask(text);
-  });
-
-  document.querySelectorAll('ul.examples button').forEach(function (b) {
+  document.querySelectorAll('.lang button').forEach(function (b) {
     b.addEventListener('click', function () {
-      q.value = b.getAttribute('data-q');
-      ask(q.value);
+      var next = b.getAttribute('data-lang');
+      if (next === lang) return;
+      var prev = lang;
+      lang = next;
+      stopSpeaking();
+      if (listening && recog) recog.abort();
+      try { localStorage.setItem('pantachevi_lang', lang); } catch (e) {}
+      applyLang(prev);
     });
   });
+
+  applyLang(null);
 })();
 </script>
 </body>
