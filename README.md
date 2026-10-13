@@ -17,11 +17,12 @@ This is the day-1 build. Read this table before judging what works.
 | Part | State |
 |---|---|
 | MCP server (Streamable HTTP, `/mcp`) with `ask_advice` and `get_field_status` | Working, tested with a real MCP client |
-| Weather, crop stage and market agents | Working, but fed by **stub data** (fixed forecast and prices) |
+| Weather agent | Open-Meteo forecast (worst hour in the next 24h). Falls back to a clearly labelled stub if the call fails. **Live response shape not yet checked against the real API** |
+| Crop stage and market agents | Working, but market is fed by **stub prices** |
 | Supervisor and conflict reconciliation | Working, deterministic rules |
 | Simulated Alexa+ web page (typed input) | Working |
 | Rules file | **Every value is a sample placeholder, not agronomic advice** |
-| Open-Meteo weather, mandi prices | Not yet |
+| Mandi prices | Not yet |
 | PostgreSQL memory, Redis cache | Not yet (compose file is ready) |
 | Amazon Bedrock + Strands supervisor | Not yet |
 | Telugu voice, spoken replies | Not yet |
@@ -64,6 +65,13 @@ async def main():
 
 asyncio.run(main())
 ```
+
+### Weather source
+
+`PANTACHEVI_WEATHER=live` (default) calls Open-Meteo, caches for 30 minutes, and on any
+failure uses placeholder data tagged `stub-fallback` with lower confidence; the reply says
+so. `PANTACHEVI_WEATHER=stub` uses the fixed forecast (rain 70% at 14:00), which the tests
+and the scripted demo rely on. Open-Meteo's free tier is non-commercial.
 
 ### Deploying behind a public hostname
 
