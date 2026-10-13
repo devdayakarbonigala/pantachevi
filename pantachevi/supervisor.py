@@ -38,6 +38,8 @@ def _by_agent(reports: list[AgentReport]) -> dict[str, AgentReport]:
 
 
 def _conflict(reports: list[AgentReport]) -> tuple[bool, str | None]:
+    # An agent with no data (for example no mandi price entered) is silent, not a dissent.
+    reports = [r for r in reports if r.evidence.get("has_data", True)]
     statuses = {r.status for r in reports}
     if len(statuses) <= 1:
         return False, None
@@ -101,12 +103,15 @@ def reconcile(intent: str, reports: list[AgentReport]) -> Verdict:
     )
 
 
-async def decide(field: Field_, question: str, today: date | None = None) -> Decision:
+async def decide(field: Field_, question: str, today: date | None = None, store=None) -> Decision:
+    from .store import get_store
+
+    store = store or await asyncio.to_thread(get_store)
     reports = list(
         await asyncio.gather(
             asyncio.to_thread(weather_report, field),
             asyncio.to_thread(crop_stage_report, field, today),
-            asyncio.to_thread(market_report, field),
+            asyncio.to_thread(market_report, field, store),
         )
     )
     intent = detect_intent(question)

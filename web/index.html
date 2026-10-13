@@ -38,13 +38,14 @@
   .answer { padding-left: 28px; }
   h2 { margin: 0 0 12px; font-size: 13px; font-family: var(--sans); text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); font-weight: 600; }
   label { display: block; font-family: var(--sans); font-size: 14px; color: var(--muted); margin-bottom: 6px; }
-  textarea {
+  textarea, input {
     width: 100%; min-height: 96px; resize: vertical;
     background: var(--panel); color: var(--ink);
     border: 1px solid var(--ink); border-radius: 0;
     padding: 10px 12px; font: inherit;
   }
-  textarea:focus-visible, button:focus-visible, a:focus-visible { outline: 3px solid var(--chilli); outline-offset: 2px; }
+  input { min-height: 0; padding: 8px 12px; }
+  textarea:focus-visible, input:focus-visible, button:focus-visible, a:focus-visible { outline: 3px solid var(--chilli); outline-offset: 2px; }
   .row { margin-top: 12px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
   button {
     font-family: var(--sans); font-size: 15px; font-weight: 600;
@@ -74,6 +75,13 @@
   .status.caution { color: var(--ochre); }
   .summary { margin: 0; }
   .evidence { margin: 6px 0 0; font-family: var(--sans); font-size: 13px; color: var(--muted); }
+  .price { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--rule); }
+  .price .pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+  .price .pair div + div { min-width: 0; }
+  .price-msg { margin: 10px 0 0; font-family: var(--sans); font-size: 14px; }
+  .price-msg.ok { color: var(--olive); }
+  .price-msg.warn { color: var(--ochre); }
+  .price-msg.bad { color: var(--chilli); }
   .sample-banner { margin: 18px 0 0; padding: 10px 12px; border: 1px solid var(--ochre); font-family: var(--sans); font-size: 14px; color: var(--ochre); }
   .disclaimer { margin: 14px 0 0; font-family: var(--sans); font-size: 13px; color: var(--muted); }
   .error { padding: 12px; border: 1px solid var(--chilli); color: var(--chilli); font-family: var(--sans); font-size: 15px; }
@@ -111,7 +119,25 @@
         <div class="row">
           <button type="submit" id="go">Ask for the call</button>
         </div>
-        <p class="field-note">Field: demo-1, Teja chilli, Guntur mandi. Typed questions only in this build.</p>
+        <p class="field-note">Field: demo-1, Teja chilli, Guntur mandi. Typed input only in this build.</p>
+      </form>
+      <form id="price-form" class="price" aria-labelledby="price-h">
+        <h2 id="price-h">Enter today's mandi price</h2>
+        <div class="pair">
+          <div>
+            <label for="mandi">Mandi</label>
+            <input id="mandi" name="mandi" type="text" maxlength="60" value="Guntur (demo)" required>
+          </div>
+          <div>
+            <label for="price">Rs per quintal</label>
+            <input id="price" name="price" type="number" inputmode="numeric" min="1000" max="100000" step="1" placeholder="16200" required>
+          </div>
+        </div>
+        <div class="row">
+          <button type="submit" id="price-go">Save price</button>
+        </div>
+        <p class="field-note">The market report compares today's price with one entered about a week earlier. The demo field already has both.</p>
+        <p id="price-msg" class="price-msg" role="status" aria-live="polite"></p>
       </form>
       <ul class="examples" aria-label="Example questions">
         <li><button type="button" data-q="Should I spray tomorrow?">Should I spray tomorrow?</button></li>
@@ -203,20 +229,66 @@
   async function ask(text) {
     go.disabled = true;
     skeleton();
+    var ctl = new AbortController();
+    var timer = setTimeout(function () { ctl.abort(); }, 15000);
     try {
       var res = await fetch('/api/advice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ field_id: 'demo-1', question: text })
+        body: JSON.stringify({ field_id: 'demo-1', question: text }),
+        signal: ctl.signal
       });
       if (!res.ok) throw new Error('The server answered with status ' + res.status + '.');
       render(await res.json());
     } catch (e) {
-      showError('Could not get a call. ' + (e && e.message ? e.message : ''));
+      var timedOut = e && e.name === 'AbortError';
+      showError(timedOut ? 'The server did not answer within 15 seconds. Please try again.'
+                         : 'Could not get a call. ' + (e && e.message ? e.message : ''));
     } finally {
+      clearTimeout(timer);
       go.disabled = false;
     }
   }
+
+  var pform = document.getElementById('price-form');
+  var pmsg = document.getElementById('price-msg');
+  var pgo = document.getElementById('price-go');
+
+  function priceMsg(kind, text) {
+    pmsg.className = 'price-msg ' + kind;
+    pmsg.textContent = text;
+  }
+
+  pform.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var price = parseInt(document.getElementById('price').value, 10);
+    if (!(price > 0)) { priceMsg('bad', 'Enter the price as a whole number.'); return; }
+    pgo.disabled = true;
+    priceMsg('warn', 'Saving...');
+    var ctl = new AbortController();
+    var timer = setTimeout(function () { ctl.abort(); }, 15000);
+    try {
+      var res = await fetch('/api/prices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mandi: document.getElementById('mandi').value.trim(), price_per_quintal: price }),
+        signal: ctl.signal
+      });
+      var body = await res.json().catch(function () { return {}; });
+      if (!res.ok) {
+        priceMsg('bad', typeof body.detail === 'string' ? body.detail : 'Could not save the price.');
+      } else if (body.warnings && body.warnings.length) {
+        priceMsg('warn', 'Saved. ' + body.warnings[0]);
+      } else {
+        priceMsg('ok', 'Saved Rs ' + price.toLocaleString('en-IN') + ' per quintal for today. Ask again to see it in the call.');
+      }
+    } catch (err) {
+      priceMsg('bad', err && err.name === 'AbortError' ? 'The server did not answer within 15 seconds.' : 'Could not reach the server.');
+    } finally {
+      clearTimeout(timer);
+      pgo.disabled = false;
+    }
+  });
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();

@@ -60,3 +60,17 @@ def test_reset_demo_redates_it(pg):
     pg.reset_demo()
     assert pg.get_field("demo-1").last_spray_date == date.today() - timedelta(days=6)
     assert len(pg.list_activities("demo-1")) == 1
+
+
+def test_prices_persist_and_same_day_replaces(pg):
+    from pantachevi.store import PostgresStore
+
+    service.log_price(pg, "Guntur", 16000, TODAY, today=TODAY)
+    service.log_price(pg, "Guntur", 16400, TODAY, today=TODAY)  # correction
+    service.log_price(pg, "Guntur", 15000, TODAY - timedelta(days=7), today=TODAY)
+    rows = PostgresStore(DSN).list_prices("Guntur")
+    assert [(r.on_date, r.price_per_quintal) for r in rows] == [(TODAY, 16400), (TODAY - timedelta(days=7), 15000)]
+
+
+def test_demo_prices_seeded_in_postgres(pg):
+    assert [r.price_per_quintal for r in pg.list_prices("Guntur (demo)")] == [16200, 15000]

@@ -18,11 +18,12 @@ This is the day-1 build. Read this table before judging what works.
 |---|---|
 | MCP server (Streamable HTTP, `/mcp`) with `ask_advice` and `get_field_status` | Working, tested with a real MCP client |
 | Weather agent | Open-Meteo forecast (worst hour in the next 24h). Falls back to a clearly labelled stub if the call fails. **Live response shape not yet checked against the real API** |
-| Crop stage and market agents | Working, but market is fed by **stub prices** |
+| Crop stage agent | Working; last spray date comes from logged activities |
+| Market agent | Uses **mandi prices typed in** by the farmer or trader (`log_price`, or the form on the web page). Says so plainly when no recent price exists. No live feed |
 | Supervisor and conflict reconciliation | Working, deterministic rules |
 | Simulated Alexa+ web page (typed input) | Working |
 | Rules file | **Every value is a sample placeholder, not agronomic advice** |
-| Mandi prices | Not yet |
+| Live mandi price feed (data.gov.in / Agmarknet) | Not yet, needs an API key |
 | PostgreSQL memory (fields, sprays, pickings) with `log_activity` and `register_field` | Working, tested against a real PostgreSQL 16. Falls back to in-memory when `DATABASE_URL` is unset |
 | Redis cache | Not yet (weather cache is in-process for now) |
 | Amazon Bedrock + Strands supervisor | Not yet |
@@ -48,7 +49,9 @@ python -m uvicorn pantachevi.server:app --port 8000
 - Health: `GET /api/health`
 - Memory: `POST /api/fields`, `GET /api/fields/{id}`, `POST /api/fields/{id}/activities` with `{"kind": "spray"}`
 
-MCP tools: `ask_advice`, `get_field_status`, `log_activity`, `register_field`.
+- Prices: `POST /api/prices` with `{"mandi": "Guntur", "price_per_quintal": 16200}`, `GET /api/prices/{mandi}`
+
+MCP tools: `ask_advice`, `get_field_status`, `log_activity`, `log_price`, `register_field`.
 
 Run the tests:
 
@@ -86,6 +89,17 @@ uses an in-memory store. To also run the Postgres tests, point
 Known limit: the write tools have no authentication yet, so on a public URL anyone who
 knows a field id can log activity on it. Do not put a real farmer's data on a public
 deployment before that is added.
+
+### Mandi prices
+
+Prices are typed in, in rupees per quintal. The newest entry counts only if it is at most
+3 days old. The trend compares it with the entry nearest to 7 days earlier (between 4 and
+10 days before). With no usable price the market report says so, has confidence 0.1, and
+is left out of the "agents disagree" message. Entering the same mandi and date again
+replaces the earlier entry, and a jump of 30% or more is saved with a typo warning. These
+cut-offs are choices made in `pantachevi/data/prices.py`, not verified market rules. The
+demo field uses its own mandi, "Guntur (demo)", so its seeded prices never mix with real
+Guntur entries.
 
 ### Weather source
 

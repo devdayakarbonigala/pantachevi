@@ -51,10 +51,15 @@ def test_stage_allows_early_in_season():
     assert r.status == "favourable"
 
 
+def P(now, before):
+    return {"source": "farmer-entered", "mandi": "Guntur", "price_now_per_quintal": now,
+            "price_7d_ago_per_quintal": before, "age_days": 0, "baseline_days": 7}
+
+
 def test_market_trend():
-    up = market_report(field(), {"price_now_per_quintal": 16200, "price_7d_ago_per_quintal": 15000, "mandi": "Guntur"})
-    down = market_report(field(), {"price_now_per_quintal": 14000, "price_7d_ago_per_quintal": 15000, "mandi": "Guntur"})
-    flat = market_report(field(), {"price_now_per_quintal": 15100, "price_7d_ago_per_quintal": 15000, "mandi": "Guntur"})
+    up = market_report(field(), prices=P(16200, 15000))
+    down = market_report(field(), prices=P(14000, 15000))
+    flat = market_report(field(), prices=P(15100, 15000))
     assert (up.status, down.status, flat.status) == ("favourable", "unfavourable", "caution")
 
 

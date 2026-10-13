@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import os
 import threading
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Literal, Protocol
 
 from pydantic import BaseModel, Field
@@ -34,17 +34,38 @@ class Activity(BaseModel):
     created_at: datetime | None = None
 
 
+class PriceObservation(BaseModel):
+    """A mandi price typed in by a farmer or trader (Rs per quintal)."""
+
+    mandi: str = Field(min_length=1, max_length=60)
+    on_date: date
+    price_per_quintal: int = Field(gt=0)
+    note: str | None = Field(default=None, max_length=200)
+    created_at: datetime | None = None
+
+
 class Store(Protocol):
     def get_field(self, field_id: str) -> Field_ | None: ...
     def list_field_ids(self) -> list[str]: ...
     def upsert_field(self, field: Field_) -> None: ...
     def add_activity(self, activity: Activity) -> Activity: ...
     def list_activities(self, field_id: str, limit: int = 10) -> list[Activity]: ...
+    def upsert_price(self, obs: PriceObservation) -> PriceObservation: ...
+    def list_prices(self, mandi: str, limit: int = 30) -> list[PriceObservation]: ...
     def reset_demo(self, today: date | None = None) -> None: ...
 
 
 def _with_last_spray(field: Field_, sprays: list[date]) -> Field_:
     return field.model_copy(update={"last_spray_date": max(sprays) if sprays else None})
+
+
+def _demo_prices(mandi: str, today: date | None) -> list[PriceObservation]:
+    """Up 8% over seven days, so the scripted demo conflict is reproducible."""
+    today = today or date.today()
+    return [
+        PriceObservation(mandi=mandi, on_date=today, price_per_quintal=16200, note=DEMO_SEED_NOTE),
+        PriceObservation(mandi=mandi, on_date=today - timedelta(days=7), price_per_quintal=15000, note=DEMO_SEED_NOTE),
+    ]
 
 
 def _demo_seed(today: date | None) -> tuple[Field_, Activity]:
@@ -64,6 +85,7 @@ class MemoryStore:
         self._lock = threading.Lock()
         self._fields: dict[str, Field_] = {}
         self._acts: list[Activity] = []
+        self._prices: dict[tuple[str, date], PriceObservation] = {}
         self.reset_demo()
 
     def get_field(self, field_id: str) -> Field_ | None:
@@ -96,12 +118,28 @@ class MemoryStore:
         rows.sort(key=lambda a: (a.on_date, a.id or 0), reverse=True)
         return rows[:limit]
 
+    def upsert_price(self, obs: PriceObservation) -> PriceObservation:
+        saved = obs.model_copy(update={"created_at": datetime.now(timezone.utc)})
+        with self._lock:
+            self._prices[(obs.mandi, obs.on_date)] = saved  # same mandi and day: a correction replaces it
+        return saved
+
+    def list_prices(self, mandi: str, limit: int = 30) -> list[PriceObservation]:
+        with self._lock:
+            rows = [p for (m, _), p in self._prices.items() if m == mandi]
+        rows.sort(key=lambda p: p.on_date, reverse=True)
+        return rows[:limit]
+
     def reset_demo(self, today: date | None = None) -> None:
         demo, spray = _demo_seed(today)
         with self._lock:
             self._fields[demo.id] = demo
             self._acts = [a for a in self._acts if a.field_id != demo.id]
+            for key in [k for k in self._prices if k[0] == demo.mandi]:
+                del self._prices[key]
         self.add_activity(spray)
+        for obs in _demo_prices(demo.mandi, today):
+            self.upsert_price(obs)
 
 
 SCHEMA = """
@@ -124,6 +162,14 @@ CREATE TABLE IF NOT EXISTS activities (
     product     text,
     notes       text,
     created_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS mandi_prices (
+    mandi             text NOT NULL,
+    on_date           date NOT NULL,
+    price_per_quintal integer NOT NULL CHECK (price_per_quintal > 0),
+    note              text,
+    created_at        timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (mandi, on_date)
 );
 CREATE INDEX IF NOT EXISTS activities_field_date ON activities (field_id, on_date DESC);
 """
@@ -193,12 +239,38 @@ class PostgresStore:
         keys = ["id", "field_id", "kind", "on_date", "product", "notes", "created_at"]
         return [Activity(**dict(zip(keys, r))) for r in rows]
 
+    def upsert_price(self, obs: PriceObservation) -> PriceObservation:
+        with self._conn() as conn:
+            row = conn.execute(
+                """INSERT INTO mandi_prices (mandi, on_date, price_per_quintal, note)
+                   VALUES (%s,%s,%s,%s)
+                   ON CONFLICT (mandi, on_date) DO UPDATE
+                     SET price_per_quintal = EXCLUDED.price_per_quintal, note = EXCLUDED.note,
+                         created_at = now()
+                   RETURNING created_at""",
+                (obs.mandi, obs.on_date, obs.price_per_quintal, obs.note),
+            ).fetchone()
+        return obs.model_copy(update={"created_at": row[0]})
+
+    def list_prices(self, mandi: str, limit: int = 30) -> list[PriceObservation]:
+        with self._conn() as conn:
+            rows = conn.execute(
+                """SELECT mandi, on_date, price_per_quintal, note, created_at FROM mandi_prices
+                   WHERE mandi = %s ORDER BY on_date DESC LIMIT %s""",
+                (mandi, limit),
+            ).fetchall()
+        keys = ["mandi", "on_date", "price_per_quintal", "note", "created_at"]
+        return [PriceObservation(**dict(zip(keys, r))) for r in rows]
+
     def reset_demo(self, today: date | None = None) -> None:
         demo, spray = _demo_seed(today)
         self.upsert_field(demo)
         with self._conn() as conn:
             conn.execute("DELETE FROM activities WHERE field_id = %s", (demo.id,))
+            conn.execute("DELETE FROM mandi_prices WHERE mandi = %s", (demo.mandi,))
         self.add_activity(spray)
+        for obs in _demo_prices(demo.mandi, today):
+            self.upsert_price(obs)
 
 
 _store: Store | None = None

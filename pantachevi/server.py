@@ -81,6 +81,21 @@ async def log_activity(
 
 
 @mcp.tool()
+async def log_price(
+    mandi: str,
+    price_per_quintal: int,
+    on_date: date | None = None,
+    note: str | None = None,
+) -> dict:
+    """Record today's mandi price for dried red chilli, in rupees per quintal
+    (for example mandi "Guntur", price 16200). The market agent compares it with
+    the entry from about a week earlier. Entering the same mandi and date again
+    replaces the earlier entry."""
+    store = await _run(get_store)
+    return await _run(service.log_price, store, mandi, price_per_quintal, on_date, note)
+
+
+@mcp.tool()
 async def register_field(
     field_id: str,
     farmer: str,
@@ -152,6 +167,13 @@ class ActivityRequest(BaseModel):
     notes: str | None = None
 
 
+class PriceRequest(BaseModel):
+    mandi: str = Field(min_length=1, max_length=60)
+    price_per_quintal: int
+    on_date: date | None = None
+    note: str | None = Field(default=None, max_length=200)
+
+
 class FieldRequest(BaseModel):
     field_id: str
     farmer: str = Field(min_length=1, max_length=80)
@@ -196,6 +218,24 @@ async def add_activity(field_id: str, req: ActivityRequest):
     store = await _run(get_store)
     return _or_http_error(await _run(service.log_activity, store, field_id, req.kind,
                                      req.on_date, req.product, req.notes))
+
+
+@app.post("/api/prices", status_code=201)
+async def add_price(req: PriceRequest):
+    store = await _run(get_store)
+    return _or_http_error(await _run(service.log_price, store, req.mandi, req.price_per_quintal,
+                                     req.on_date, req.note))
+
+
+@app.get("/api/prices/{mandi}")
+async def get_mandi_prices(mandi: str):
+    from .data.prices import get_prices
+
+    store = await _run(get_store)
+    return {
+        "market_view": await _run(get_prices, store, mandi),
+        "recent_prices": [p.model_dump(mode="json") for p in await _run(store.list_prices, mandi, 7)],
+    }
 
 
 @app.get("/")

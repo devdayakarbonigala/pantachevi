@@ -11,7 +11,7 @@ from pydantic import ValidationError
 
 from .models import Field_
 from .rules import rule_value
-from .store import Activity, Store
+from .store import Activity, PriceObservation, Store
 
 FIELD_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{2,39}$")
 
@@ -105,3 +105,55 @@ def log_activity(
     result["logged"] = saved.model_dump(mode="json")
     result["warnings"] = warnings
     return result
+
+
+MIN_PRICE = 1_000      # Rs per quintal; below this is almost certainly a typo
+MAX_PRICE = 100_000
+JUMP_WARN_PCT = 30
+
+
+def log_price(
+    store: Store,
+    mandi: str,
+    price_per_quintal: int,
+    on_date: date | None = None,
+    note: str | None = None,
+    today: date | None = None,
+) -> dict:
+    """Record a mandi price typed in by the farmer. Same mandi and date replaces the earlier entry."""
+    from .data.prices import get_prices
+
+    today = today or date.today()
+    mandi = (mandi or "").strip()
+    if not mandi:
+        return {"error": "mandi cannot be empty."}
+    if not (MIN_PRICE <= price_per_quintal <= MAX_PRICE):
+        return {"error": f"price_per_quintal must be between Rs {MIN_PRICE:,} and Rs {MAX_PRICE:,} per quintal."}
+    on_date = on_date or today
+    if on_date > today:
+        return {"error": "on_date cannot be in the future."}
+    if (today - on_date).days > 30:
+        return {"error": "on_date is more than 30 days ago. Enter a recent price."}
+
+    earlier = [p for p in store.list_prices(mandi) if p.on_date < on_date]
+    warnings: list[str] = []
+    if earlier:
+        prev = earlier[0]
+        jump = (price_per_quintal - prev.price_per_quintal) / prev.price_per_quintal * 100
+        if abs(jump) >= JUMP_WARN_PCT:
+            warnings.append(
+                f"This is {jump:+.0f}% against Rs {prev.price_per_quintal:,} on {prev.on_date}. "
+                "Saved, but please check for a typing mistake."
+            )
+    try:
+        saved = store.upsert_price(
+            PriceObservation(mandi=mandi, on_date=on_date, price_per_quintal=price_per_quintal, note=note or None)
+        )
+    except ValidationError as exc:
+        return {"error": f"Invalid price entry: {exc.errors()[0]['msg']}"}
+    return {
+        "logged": saved.model_dump(mode="json"),
+        "market_view": get_prices(store, mandi, today),
+        "recent_prices": [p.model_dump(mode="json") for p in store.list_prices(mandi, 7)],
+        "warnings": warnings,
+    }

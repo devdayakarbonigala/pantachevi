@@ -25,7 +25,7 @@ def demo_fields(today: date | None = None) -> dict[str, Field_]:
         lng=80.4365,
         sowing_date=today - timedelta(days=98),
         last_spray_date=today - timedelta(days=6),
-        mandi="Guntur",
+        mandi="Guntur (demo)",
     )
     return {demo.id: demo}
 
