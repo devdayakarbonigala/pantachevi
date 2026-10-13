@@ -51,7 +51,7 @@ python -m uvicorn pantachevi.server:app --port 8000
 
 - Prices: `POST /api/prices` with `{"mandi": "Guntur", "price_per_quintal": 16200}`, `GET /api/prices/{mandi}`
 
-MCP tools: `ask_advice`, `get_field_status`, `log_activity`, `log_price`, `register_field`.
+MCP tools: `ask_advice`, `get_field_status`, `log_activity`, `log_price`, `delete_price`, `register_field`.
 
 Run the tests:
 
@@ -90,13 +90,20 @@ Known limit: the write tools have no authentication yet, so on a public URL anyo
 knows a field id can log activity on it. Do not put a real farmer's data on a public
 deployment before that is added.
 
+### Changing the rules
+
+Edit `rules/chilli_guntur.json` and save. The app notices the change on the next request,
+with no restart. If a save leaves the file broken (bad JSON), the last good rules stay in
+use and a warning is logged. When a value comes from a real source, set its `status` to
+`verified` and fill in `source`; the sample-rules banner disappears once all are verified.
+
 ### Mandi prices
 
 Prices are typed in, in rupees per quintal. The newest entry counts only if it is at most
 3 days old. The trend compares it with the entry nearest to 7 days earlier (between 4 and
 10 days before). With no usable price the market report says so, has confidence 0.1, and
 is left out of the "agents disagree" message. Entering the same mandi and date again
-replaces the earlier entry, and a jump of 30% or more is saved with a typo warning. These
+replaces the earlier entry (`delete_price` or `DELETE /api/prices/{mandi}/{date}` removes a wrong one), and a jump of 30% or more is saved with a typo warning. These
 cut-offs are choices made in `pantachevi/data/prices.py`, not verified market rules. The
 demo field uses its own mandi, "Guntur (demo)", so its seeded prices never mix with real
 Guntur entries.

@@ -144,3 +144,33 @@ def test_mcp_log_price_tool():
 
     out = asyncio.run(run())
     assert out["logged"]["price_per_quintal"] == 16100 and out["market_view"]["source"] == "farmer-entered"
+
+
+def test_delete_price_removes_entry_and_changes_the_view():
+    s = MemoryStore()
+    put(s, 7, 15000)
+    put(s, 0, 16200)
+    assert report(s).status == "favourable"
+    r = service.delete_price(s, "Guntur", TODAY, today=TODAY)
+    assert r["deleted"]["on_date"] == TODAY.isoformat()
+    assert report(s).evidence["has_data"] is False  # only the week-old entry is left, and it is too old
+    assert "No price entered" in service.delete_price(s, "Guntur", TODAY, today=TODAY)["error"]
+
+
+def test_delete_price_over_rest_and_mcp(client):
+    import asyncio, json
+    from mcp import Client
+    from pantachevi.server import mcp
+
+    client.post("/api/prices", json={"mandi": "Tenali", "price_per_quintal": 15000})
+    d = date.today().isoformat()
+    assert client.delete(f"/api/prices/Tenali/{d}").status_code == 200
+    assert client.delete(f"/api/prices/Tenali/{d}").status_code == 404
+    client.post("/api/prices", json={"mandi": "Tenali", "price_per_quintal": 15000})
+
+    async def run():
+        async with Client(mcp) as c:
+            res = await c.call_tool("delete_price", {"mandi": "Tenali", "on_date": d})
+            return json.loads(res.content[0].text)
+
+    assert asyncio.run(run())["deleted"]["mandi"] == "Tenali"

@@ -62,5 +62,5 @@ def test_mcp_tool_in_memory():
             return names, res
 
     names, res = asyncio.run(run())
-    assert names == {"ask_advice", "get_field_status", "log_activity", "log_price", "register_field"}
+    assert names == {"ask_advice", "get_field_status", "log_activity", "log_price", "delete_price", "register_field"}
     assert "Skip the spray" in res.content[0].text

@@ -24,7 +24,7 @@ def pg():
     from pantachevi.store import PostgresStore
 
     with psycopg.connect(DSN, autocommit=True) as conn:
-        conn.execute("DROP TABLE IF EXISTS activities, fields CASCADE")
+        conn.execute("DROP TABLE IF EXISTS activities, fields, mandi_prices CASCADE")
     return PostgresStore(DSN)
 
 
@@ -74,3 +74,10 @@ def test_prices_persist_and_same_day_replaces(pg):
 
 def test_demo_prices_seeded_in_postgres(pg):
     assert [r.price_per_quintal for r in pg.list_prices("Guntur (demo)")] == [16200, 15000]
+
+
+def test_delete_price_in_postgres(pg):
+    service.log_price(pg, "Guntur", 16000, TODAY, today=TODAY)
+    assert pg.delete_price("Guntur", TODAY) is True
+    assert pg.delete_price("Guntur", TODAY) is False
+    assert pg.list_prices("Guntur") == []

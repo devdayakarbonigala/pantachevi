@@ -157,3 +157,18 @@ def log_price(
         "recent_prices": [p.model_dump(mode="json") for p in store.list_prices(mandi, 7)],
         "warnings": warnings,
     }
+
+
+def delete_price(store: Store, mandi: str, on_date: date, today: date | None = None) -> dict:
+    """Remove one typed price (for a wrong entry). Returns the remaining recent prices."""
+    from .data.prices import get_prices
+
+    today = today or date.today()
+    mandi = (mandi or "").strip()
+    if not store.delete_price(mandi, on_date):
+        return {"error": f"No price entered for {mandi!r} on {on_date}."}
+    return {
+        "deleted": {"mandi": mandi, "on_date": on_date.isoformat()},
+        "market_view": get_prices(store, mandi, today),
+        "recent_prices": [p.model_dump(mode="json") for p in store.list_prices(mandi, 7)],
+    }

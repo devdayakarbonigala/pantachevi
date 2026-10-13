@@ -52,6 +52,7 @@ class Store(Protocol):
     def list_activities(self, field_id: str, limit: int = 10) -> list[Activity]: ...
     def upsert_price(self, obs: PriceObservation) -> PriceObservation: ...
     def list_prices(self, mandi: str, limit: int = 30) -> list[PriceObservation]: ...
+    def delete_price(self, mandi: str, on_date: date) -> bool: ...
     def reset_demo(self, today: date | None = None) -> None: ...
 
 
@@ -129,6 +130,10 @@ class MemoryStore:
             rows = [p for (m, _), p in self._prices.items() if m == mandi]
         rows.sort(key=lambda p: p.on_date, reverse=True)
         return rows[:limit]
+
+    def delete_price(self, mandi: str, on_date: date) -> bool:
+        with self._lock:
+            return self._prices.pop((mandi, on_date), None) is not None
 
     def reset_demo(self, today: date | None = None) -> None:
         demo, spray = _demo_seed(today)
@@ -261,6 +266,11 @@ class PostgresStore:
             ).fetchall()
         keys = ["mandi", "on_date", "price_per_quintal", "note", "created_at"]
         return [PriceObservation(**dict(zip(keys, r))) for r in rows]
+
+    def delete_price(self, mandi: str, on_date: date) -> bool:
+        with self._conn() as conn:
+            cur = conn.execute("DELETE FROM mandi_prices WHERE mandi = %s AND on_date = %s", (mandi, on_date))
+            return cur.rowcount > 0
 
     def reset_demo(self, today: date | None = None) -> None:
         demo, spray = _demo_seed(today)

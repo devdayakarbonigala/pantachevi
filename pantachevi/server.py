@@ -96,6 +96,13 @@ async def log_price(
 
 
 @mcp.tool()
+async def delete_price(mandi: str, on_date: date) -> dict:
+    """Delete a mistaken mandi price entry for one mandi and date."""
+    store = await _run(get_store)
+    return await _run(service.delete_price, store, mandi, on_date)
+
+
+@mcp.tool()
 async def register_field(
     field_id: str,
     farmer: str,
@@ -225,6 +232,12 @@ async def add_price(req: PriceRequest):
     store = await _run(get_store)
     return _or_http_error(await _run(service.log_price, store, req.mandi, req.price_per_quintal,
                                      req.on_date, req.note))
+
+
+@app.delete("/api/prices/{mandi}/{on_date}")
+async def remove_price(mandi: str, on_date: date):
+    store = await _run(get_store)
+    return _or_http_error(await _run(service.delete_price, store, mandi, on_date), status=404)
 
 
 @app.get("/api/prices/{mandi}")
