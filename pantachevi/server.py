@@ -7,8 +7,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 from contextlib import asynccontextmanager
+from datetime import date
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -18,8 +20,9 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 from pydantic import BaseModel, Field
 
-from .data import stubs
+from . import service
 from .rules import load_rules
+from .store import get_store
 from .supervisor import decide
 
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
@@ -27,11 +30,9 @@ WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 mcp = MCPServer("PantaChevi")
 
 
-def _get_field(field_id: str):
-    field = stubs.demo_fields().get(field_id)
-    if field is None:
-        raise KeyError(field_id)
-    return field
+async def _run(fn, *args, **kwargs):
+    """Store calls are blocking (psycopg), so keep them off the event loop."""
+    return await asyncio.to_thread(fn, *args, **kwargs)
 
 
 @mcp.tool()
@@ -40,26 +41,61 @@ async def ask_advice(field_id: str, question: str) -> dict:
 
     Checks the weather forecast, the crop stage and the mandi price in parallel,
     reconciles any disagreement, and returns a verdict with the reason and each
-    agent's report. Use field_id "demo-1" for the demo field.
+    agent's report. The last spray date comes from logged activities. Use
+    field_id "demo-1" for the demo field.
     """
-    try:
-        field = _get_field(field_id)
-    except KeyError:
-        return {"error": f"Unknown field_id '{field_id}'. Known fields: {sorted(stubs.demo_fields())}"}
+    store = await _run(get_store)
+    field = await _run(store.get_field, field_id)
+    if field is None:
+        return {"error": f"Unknown field_id '{field_id}'. Known fields: {await _run(store.list_field_ids)}"}
     return (await decide(field, question)).model_dump(mode="json")
 
 
 @mcp.tool()
 async def get_field_status(field_id: str) -> dict:
-    """Return the stored details of a field and whether its rules are verified."""
-    try:
-        field = _get_field(field_id)
-    except KeyError:
-        return {"error": f"Unknown field_id '{field_id}'."}
-    return {
-        "field": field.model_dump(mode="json"),
-        "rules_note": load_rules()["status_note"],
-    }
+    """Return a field's stored details, days since sowing, days since the last
+    spray and its recent activities, plus whether the rules are verified."""
+    store = await _run(get_store)
+    state = await _run(service.field_state, store, field_id)
+    if "error" not in state:
+        state["rules_note"] = load_rules()["status_note"]
+    return state
+
+
+@mcp.tool()
+async def log_activity(
+    field_id: str,
+    kind: str,
+    on_date: date | None = None,
+    product: str | None = None,
+    notes: str | None = None,
+) -> dict:
+    """Record something the farmer did on a field: kind is "spray", "pick" or "note".
+
+    on_date defaults to today and cannot be in the future. A logged spray resets
+    the days-since-last-spray count that the crop stage agent uses, so only log
+    sprays that really happened.
+    """
+    store = await _run(get_store)
+    return await _run(service.log_activity, store, field_id, kind, on_date, product, notes)
+
+
+@mcp.tool()
+async def register_field(
+    field_id: str,
+    farmer: str,
+    variety: str,
+    village: str,
+    lat: float,
+    lng: float,
+    sowing_date: date,
+    mandi: str = "Guntur",
+) -> dict:
+    """Register a new chilli field. field_id is a short lowercase slug such as
+    "ramu-plot-1". Fails if the id is already taken."""
+    store = await _run(get_store)
+    return await _run(service.register_field, store, field_id, farmer, variety, village,
+                      lat, lng, sowing_date, mandi)
 
 
 # The MCP ASGI app is mounted below; its session manager must be started by us
@@ -89,6 +125,7 @@ mcp_asgi = mcp.streamable_http_app(
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    await _run(get_store)  # connect to Postgres now, so a bad DATABASE_URL fails at startup
     async with mcp.session_manager.run():
         yield
 
@@ -108,13 +145,57 @@ async def health():
     )}
 
 
+class ActivityRequest(BaseModel):
+    kind: str
+    on_date: date | None = None
+    product: str | None = None
+    notes: str | None = None
+
+
+class FieldRequest(BaseModel):
+    field_id: str
+    farmer: str = Field(min_length=1, max_length=80)
+    variety: str = Field(min_length=1, max_length=60)
+    village: str = Field(min_length=1, max_length=80)
+    lat: float
+    lng: float
+    sowing_date: date
+    mandi: str = Field(default="Guntur", min_length=1, max_length=60)
+
+
+def _or_http_error(result: dict, status: int = 400) -> dict:
+    if "error" in result:
+        raise HTTPException(status_code=404 if result["error"].startswith("Unknown field_id") else status,
+                            detail=result["error"])
+    return result
+
+
 @app.post("/api/advice")
 async def advice(req: AdviceRequest):
-    try:
-        field = _get_field(req.field_id)
-    except KeyError:
+    store = await _run(get_store)
+    field = await _run(store.get_field, req.field_id)
+    if field is None:
         raise HTTPException(status_code=404, detail=f"Unknown field_id '{req.field_id}'")
     return (await decide(field, req.question)).model_dump(mode="json")
+
+
+@app.get("/api/fields/{field_id}")
+async def field_status(field_id: str):
+    store = await _run(get_store)
+    return _or_http_error(await _run(service.field_state, store, field_id))
+
+
+@app.post("/api/fields", status_code=201)
+async def create_field(req: FieldRequest):
+    store = await _run(get_store)
+    return _or_http_error(await _run(service.register_field, store, **req.model_dump()))
+
+
+@app.post("/api/fields/{field_id}/activities", status_code=201)
+async def add_activity(field_id: str, req: ActivityRequest):
+    store = await _run(get_store)
+    return _or_http_error(await _run(service.log_activity, store, field_id, req.kind,
+                                     req.on_date, req.product, req.notes))
 
 
 @app.get("/")

@@ -23,7 +23,8 @@ This is the day-1 build. Read this table before judging what works.
 | Simulated Alexa+ web page (typed input) | Working |
 | Rules file | **Every value is a sample placeholder, not agronomic advice** |
 | Mandi prices | Not yet |
-| PostgreSQL memory, Redis cache | Not yet (compose file is ready) |
+| PostgreSQL memory (fields, sprays, pickings) with `log_activity` and `register_field` | Working, tested against a real PostgreSQL 16. Falls back to in-memory when `DATABASE_URL` is unset |
+| Redis cache | Not yet (weather cache is in-process for now) |
 | Amazon Bedrock + Strands supervisor | Not yet |
 | Telugu voice, spoken replies | Not yet |
 
@@ -45,6 +46,9 @@ python -m uvicorn pantachevi.server:app --port 8000
 - MCP endpoint: `http://localhost:8000/mcp`
 - REST: `POST /api/advice` with `{"field_id": "demo-1", "question": "Should I spray tomorrow?"}`
 - Health: `GET /api/health`
+- Memory: `POST /api/fields`, `GET /api/fields/{id}`, `POST /api/fields/{id}/activities` with `{"kind": "spray"}`
+
+MCP tools: `ask_advice`, `get_field_status`, `log_activity`, `register_field`.
 
 Run the tests:
 
@@ -65,6 +69,23 @@ async def main():
 
 asyncio.run(main())
 ```
+
+### Memory (PostgreSQL)
+
+```bash
+docker compose up -d postgres
+export DATABASE_URL=postgresql://pantachevi:pantachevi_local_dev@localhost:5432/pantachevi
+python -m pantachevi.reset_demo   # re-dates the demo field before a demo
+```
+
+Tables are created on startup. The last spray date is derived from logged `spray`
+activities, so logging a spray changes the next answer. Without `DATABASE_URL` the app
+uses an in-memory store. To also run the Postgres tests, point
+`PANTACHEVI_TEST_DATABASE_URL` at a throwaway database (the tests drop its tables).
+
+Known limit: the write tools have no authentication yet, so on a public URL anyone who
+knows a field id can log activity on it. Do not put a real farmer's data on a public
+deployment before that is added.
 
 ### Weather source
 

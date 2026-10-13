@@ -1,16 +1,5 @@
 import asyncio
 
-import pytest
-from fastapi.testclient import TestClient
-
-from pantachevi.server import app
-
-
-@pytest.fixture(scope="module")
-def client():
-    # The context manager runs the lifespan, which starts the MCP session manager.
-    with TestClient(app) as c:
-        yield c
 
 
 def test_health(client):
@@ -73,5 +62,5 @@ def test_mcp_tool_in_memory():
             return names, res
 
     names, res = asyncio.run(run())
-    assert names == {"ask_advice", "get_field_status"}
+    assert names == {"ask_advice", "get_field_status", "log_activity", "register_field"}
     assert "Skip the spray" in res.content[0].text
