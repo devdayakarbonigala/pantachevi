@@ -24,7 +24,7 @@ DISCLAIMER_TE = (
 )
 
 AGENT_TE = {"weather": "వాతావరణం", "crop_stage": "పంట దశ", "market": "మార్కెట్"}
-STATUS_TE = {"favourable": "అనుకూలం", "unfavourable": "అననుకూలం", "caution": "జాగ్రత్త"}
+STATUS_TE = {"favourable": "మంచిది", "unfavourable": "బాగాలేదు", "caution": "జాగ్రత్త"}
 
 SPRAY_WORDS = ("spray", "pesticide", "fungicide", "insecticide", "పిచికారీ", "మందు", "స్ప్రే")
 PICK_WORDS = ("pick", "harvest", "sell", "price", "mandi", "hold", "కోత", "కోయ", "అమ్మ", "ధర", "మార్కెట్", "యార్డ్")

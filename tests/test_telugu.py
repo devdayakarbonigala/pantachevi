@@ -72,7 +72,7 @@ def test_demo_verdict_in_telugu(monkeypatch):
     d = run(decide(s.get_field("t-1"), "Should I spray tomorrow?", today=TODAY, store=s))
     assert d.verdict.action_te == "పిచికారీ వద్దు. కోత 7 రోజుల్లో మొదలుపెట్టండి."
     assert d.verdict.follow_up_te == "2 రోజుల్లో వాతావరణ సూచనను మళ్లీ చూడండి."
-    assert "వాతావరణం అననుకూలం" in d.verdict.conflict_detail_te
+    assert "వాతావరణం బాగాలేదు" in d.verdict.conflict_detail_te
 
 
 @pytest.mark.parametrize("text,intent", [
