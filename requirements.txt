@@ -1,0 +1,5 @@
+mcp>=2.3,<3
+fastapi>=0.130
+uvicorn[standard]>=0.40
+httpx>=0.28
+pytest>=9

@@ -1,0 +1,62 @@
+{
+  "crop": "chilli",
+  "region": "Guntur",
+  "status_note": "Every value below is a SAMPLE placeholder. None of it is agronomic advice. Each rule must be checked against a real source (Horticulture department, ICAR guidance, the pesticide label, a local grower) and then changed to status \"verified\" with a named source.",
+  "rules": {
+    "weather": {
+      "max_rain_probability_pct": {
+        "value": 40,
+        "unit": "percent",
+        "meaning": "Do not spray if the chance of rain in the next 24 hours is above this.",
+        "status": "sample",
+        "source": null
+      },
+      "max_wind_kmh": {
+        "value": 15,
+        "unit": "km/h",
+        "meaning": "Do not spray if wind speed is above this.",
+        "status": "sample",
+        "source": null
+      }
+    },
+    "crop_stage": {
+      "days_to_first_pick": {
+        "value": 105,
+        "unit": "days after sowing",
+        "meaning": "Days from sowing to the start of the first picking window.",
+        "status": "sample",
+        "source": null
+      },
+      "pre_harvest_interval_days": {
+        "value": 7,
+        "unit": "days",
+        "meaning": "Minimum days between the last spray and picking. The real value depends on the product and is printed on its label.",
+        "status": "sample",
+        "source": null
+      },
+      "min_days_between_sprays": {
+        "value": 10,
+        "unit": "days",
+        "meaning": "Minimum gap between two sprays.",
+        "status": "sample",
+        "source": null
+      }
+    },
+    "market": {
+      "favourable_trend_pct": {
+        "value": 5,
+        "unit": "percent over 7 days",
+        "meaning": "A price rise at or above this counts as a favourable signal to pick and sell.",
+        "status": "sample",
+        "source": null
+      },
+      "unfavourable_trend_pct": {
+        "value": -5,
+        "unit": "percent over 7 days",
+        "meaning": "A price fall at or below this counts as an unfavourable signal.",
+        "status": "sample",
+        "source": null
+      }
+    }
+  }
+}

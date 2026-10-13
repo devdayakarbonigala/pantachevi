@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PantaChevi</title>
+<style>
+  :root {
+    --paper: #ECE5D3;
+    --panel: #F4EFE2;
+    --ink: #231F1A;
+    --muted: #5E574B;
+    --rule: #BBB097;
+    --chilli: #9E2A1D;
+    --olive: #3F5F2B;
+    --ochre: #7F5F0E;
+    --serif: Charter, "Iowan Old Style", Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--paper); }
+  body {
+    margin: 0;
+    padding: 0 16px 48px;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 18px;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; }
+  header { padding: 28px 0 18px; border-bottom: 2px solid var(--ink); }
+  header h1 { margin: 0; font-size: 36px; letter-spacing: 0.01em; line-height: 1.1; }
+  header p { margin: 6px 0 0; color: var(--muted); font-family: var(--sans); font-size: 15px; }
+  main { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 0; }
+  .ask, .answer { padding: 24px 0; }
+  .ask { padding-right: 28px; border-right: 1px solid var(--rule); }
+  .answer { padding-left: 28px; }
+  h2 { margin: 0 0 12px; font-size: 13px; font-family: var(--sans); text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); font-weight: 600; }
+  label { display: block; font-family: var(--sans); font-size: 14px; color: var(--muted); margin-bottom: 6px; }
+  textarea {
+    width: 100%; min-height: 96px; resize: vertical;
+    background: var(--panel); color: var(--ink);
+    border: 1px solid var(--ink); border-radius: 0;
+    padding: 10px 12px; font: inherit;
+  }
+  textarea:focus-visible, button:focus-visible, a:focus-visible { outline: 3px solid var(--chilli); outline-offset: 2px; }
+  .row { margin-top: 12px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  button {
+    font-family: var(--sans); font-size: 15px; font-weight: 600;
+    padding: 10px 18px; border-radius: 0; cursor: pointer;
+    border: 1px solid var(--ink); background: var(--chilli); color: #FBF6EA;
+  }
+  button[disabled] { opacity: 0.6; cursor: progress; }
+  .field-note { font-family: var(--sans); font-size: 14px; color: var(--muted); margin-top: 6px; }
+  ul.examples { list-style: none; margin: 20px 0 0; padding: 0; border-top: 1px solid var(--rule); }
+  ul.examples li { border-bottom: 1px solid var(--rule); }
+  ul.examples button {
+    width: 100%; text-align: left; background: transparent; color: var(--ink);
+    border: 0; font-weight: 400; font-family: var(--serif); font-size: 17px; padding: 10px 0;
+  }
+  .verdict { padding: 0 0 18px; border-bottom: 2px solid var(--ink); }
+  .verdict .tag { font-family: var(--sans); font-size: 13px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--chilli); font-weight: 700; }
+  .verdict .action { font-size: 28px; line-height: 1.2; margin: 6px 0 10px; }
+  .verdict .why { color: var(--muted); margin: 0; }
+  .conflict { margin: 14px 0 0; padding: 10px 12px; background: var(--panel); border: 1px solid var(--rule); font-family: var(--sans); font-size: 15px; }
+  .followup { margin: 10px 0 0; font-family: var(--sans); font-size: 15px; font-weight: 600; }
+  .reports { margin: 0; padding: 0; list-style: none; }
+  .reports li { padding: 14px 0; border-bottom: 1px solid var(--rule); display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 16px; }
+  .agent { font-family: var(--sans); font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+  .status { display: block; margin-top: 4px; font-size: 13px; letter-spacing: 0.04em; text-transform: none; font-weight: 600; }
+  .status.favourable { color: var(--olive); }
+  .status.unfavourable { color: var(--chilli); }
+  .status.caution { color: var(--ochre); }
+  .summary { margin: 0; }
+  .evidence { margin: 6px 0 0; font-family: var(--sans); font-size: 13px; color: var(--muted); }
+  .sample-banner { margin: 18px 0 0; padding: 10px 12px; border: 1px solid var(--ochre); font-family: var(--sans); font-size: 14px; color: var(--ochre); }
+  .disclaimer { margin: 14px 0 0; font-family: var(--sans); font-size: 13px; color: var(--muted); }
+  .error { padding: 12px; border: 1px solid var(--chilli); color: var(--chilli); font-family: var(--sans); font-size: 15px; }
+  .placeholder { color: var(--muted); font-family: var(--sans); font-size: 15px; }
+  /* skeleton loader */
+  .sk { background: #D9D0BA; height: 14px; margin: 10px 0; animation: pulse 1.2s ease-in-out infinite; }
+  .sk.lg { height: 30px; width: 80%; }
+  .sk.md { width: 60%; }
+  .sk.sm { width: 40%; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+  @media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+  footer { margin-top: 24px; padding-top: 14px; border-top: 1px solid var(--rule); font-family: var(--sans); font-size: 13px; color: var(--muted); }
+  footer a { color: var(--ink); }
+  @media (max-width: 760px) {
+    main { grid-template-columns: 1fr; }
+    .ask { padding-right: 0; border-right: 0; border-bottom: 1px solid var(--rule); }
+    .answer { padding-left: 0; }
+    .reports li { grid-template-columns: 1fr; gap: 4px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>PantaChevi</h1>
+    <p>Hot Call for your chilli field. Simulated Alexa+ desk, demo field in Guntur.</p>
+  </header>
+
+  <main>
+    <section class="ask" aria-labelledby="ask-h">
+      <h2 id="ask-h">Ask</h2>
+      <form id="form">
+        <label for="q">Your question about the field</label>
+        <textarea id="q" name="q" maxlength="500" required>Should I spray tomorrow?</textarea>
+        <div class="row">
+          <button type="submit" id="go">Ask for the call</button>
+        </div>
+        <p class="field-note">Field: demo-1, Teja chilli, Guntur mandi. Typed questions only in this build.</p>
+      </form>
+      <ul class="examples" aria-label="Example questions">
+        <li><button type="button" data-q="Should I spray tomorrow?">Should I spray tomorrow?</button></li>
+        <li><button type="button" data-q="When should I pick and sell?">When should I pick and sell?</button></li>
+        <li><button type="button" data-q="What should I do this week?">What should I do this week?</button></li>
+      </ul>
+    </section>
+
+    <section class="answer" aria-labelledby="ans-h">
+      <h2 id="ans-h">The call and how it was made</h2>
+      <div id="out" aria-live="polite">
+        <p class="placeholder">Ask a question to see the weather, crop stage and market reports and the single call that comes out of them.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <a href="/legal">Terms and privacy</a>. Not affiliated with Amazon. Built for the Build, Ship, Shape: Amazon Developer Hackathon.
+  </footer>
+</div>
+
+<script>
+(function () {
+  var form = document.getElementById('form');
+  var q = document.getElementById('q');
+  var go = document.getElementById('go');
+  var out = document.getElementById('out');
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined && text !== null) n.textContent = text;
+    return n;
+  }
+
+  function skeleton() {
+    out.replaceChildren();
+    out.appendChild(el('div', 'sk lg'));
+    out.appendChild(el('div', 'sk'));
+    out.appendChild(el('div', 'sk md'));
+    for (var i = 0; i < 3; i++) {
+      out.appendChild(el('div', 'sk sm'));
+      out.appendChild(el('div', 'sk'));
+    }
+  }
+
+  function evidenceLine(ev) {
+    var parts = [];
+    Object.keys(ev).forEach(function (k) {
+      if (ev[k] !== null && ev[k] !== undefined) parts.push(k.replace(/_/g, ' ') + ': ' + ev[k]);
+    });
+    return parts.join('   ');
+  }
+
+  function render(d) {
+    out.replaceChildren();
+    var v = el('div', 'verdict');
+    v.appendChild(el('div', 'tag', 'Hot Call'));
+    v.appendChild(el('p', 'action', d.verdict.action));
+    v.appendChild(el('p', 'why', d.verdict.reason));
+    if (d.verdict.conflict && d.verdict.conflict_detail) v.appendChild(el('p', 'conflict', d.verdict.conflict_detail));
+    if (d.verdict.follow_up) v.appendChild(el('p', 'followup', d.verdict.follow_up));
+    out.appendChild(v);
+
+    var ul = el('ul', 'reports');
+    d.reports.forEach(function (r) {
+      var li = el('li');
+      var left = el('div', 'agent', r.agent.replace(/_/g, ' '));
+      left.appendChild(el('span', 'status ' + r.status, r.status));
+      var right = el('div');
+      right.appendChild(el('p', 'summary', r.summary));
+      right.appendChild(el('p', 'evidence', evidenceLine(r.evidence) + '   confidence: ' + r.confidence));
+      li.appendChild(left);
+      li.appendChild(right);
+      ul.appendChild(li);
+    });
+    out.appendChild(ul);
+
+    if (!d.rules_verified) {
+      out.appendChild(el('p', 'sample-banner', 'Sample rules: the spray and harvest thresholds in this build are placeholders and have not been verified against a real source.'));
+    }
+    out.appendChild(el('p', 'disclaimer', d.disclaimer));
+  }
+
+  function showError(msg) {
+    out.replaceChildren(el('p', 'error', msg));
+  }
+
+  async function ask(text) {
+    go.disabled = true;
+    skeleton();
+    try {
+      var res = await fetch('/api/advice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ field_id: 'demo-1', question: text })
+      });
+      if (!res.ok) throw new Error('The server answered with status ' + res.status + '.');
+      render(await res.json());
+    } catch (e) {
+      showError('Could not get a call. ' + (e && e.message ? e.message : ''));
+    } finally {
+      go.disabled = false;
+    }
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var text = q.value.trim();
+    if (text.length >= 2) ask(text);
+  });
+
+  document.querySelectorAll('ul.examples button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      q.value = b.getAttribute('data-q');
+      ask(q.value);
+    });
+  });
+})();
+</script>
+</body>
+</html>
