@@ -59,3 +59,7 @@ class Decision(BaseModel):
     rules_verified: bool
     disclaimer: str
     disclaimer_te: str | None = None
+    # Which supervisor wrote the verdict: "rules" or "bedrock". If bedrock was
+    # requested but failed, this is "rules" and supervisor_note says why.
+    supervisor: str = "rules"
+    supervisor_note: str | None = None

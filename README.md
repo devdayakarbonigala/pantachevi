@@ -20,13 +20,13 @@ This is the day-1 build. Read this table before judging what works.
 | Weather agent | Open-Meteo forecast (worst hour in the next 24h). Falls back to a clearly labelled stub if the call fails. **Live response shape not yet checked against the real API** |
 | Crop stage agent | Working; last spray date comes from logged activities |
 | Market agent | Uses **mandi prices typed in** by the farmer or trader (`log_price`, or the form on the web page). Says so plainly when no recent price exists. No live feed |
-| Supervisor and conflict reconciliation | Working, deterministic rules |
+| Supervisor and conflict reconciliation | Working, deterministic rules (the default) |
 | Simulated Alexa+ web page | Working, English and Telugu. Voice input and spoken replies use the browser's own speech tools (Chrome or Edge on Android and desktop). Typed input always works |
 | Rules file | **Every value is a sample placeholder, not agronomic advice** |
 | Live mandi price feed (data.gov.in / Agmarknet) | Not yet, needs an API key |
 | PostgreSQL memory (fields, sprays, pickings) with `log_activity` and `register_field` | Working, tested against a real PostgreSQL 16. Falls back to in-memory when `DATABASE_URL` is unset |
 | Redis cache | Not yet (weather cache is in-process for now) |
-| Amazon Bedrock + Strands supervisor | Not yet |
+| Amazon Bedrock supervisor (Converse API, `PANTACHEVI_SUPERVISOR=bedrock`) | Code and tests done against a fake client. **Never run against the real service: my AWS account is blocked from Bedrock model calls (support case open).** Any failure falls back to the rule-based verdict, and the reply says which one wrote it. Strands SDK not used yet |
 | Telugu wording | Written by an AI assistant as fixed sentences, **not yet reviewed by a native speaker**. Telugu speech depends on the device having a Telugu voice |
 
 Nothing in this repository should be used for real farming decisions until the rules in
@@ -162,6 +162,7 @@ verdict is "Skip the spray. Start picking in 7 days." with a re-check of the for
 pantachevi/
   server.py        FastAPI app, MCP server, REST endpoint
   supervisor.py    runs agents, reconciles, builds the Decision
+  llm_supervisor.py  optional Bedrock verdict writer with validation and fallback
   agents/          weather.py, crop_stage.py, market.py
   data/stubs.py    stub forecast, prices and the demo field
   rules.py         rules loader

@@ -1,15 +1,16 @@
 """Supervisor: runs the three agents in parallel and reconciles their reports
 into one verdict with a reason.
 
-Day-1 build: the reconciliation is deterministic rules, so every verdict can be
-traced to a report. The Bedrock + Strands version will replace `reconcile`
-only for wording and for questions the rules do not cover; the agent reports
-and the Decision shape stay the same.
+Default: the reconciliation is deterministic rules, so every verdict can be
+traced to a report. With PANTACHEVI_SUPERVISOR=bedrock a model writes the final
+wording from the same reports (see llm_supervisor.py); any failure or any
+disagreement with the rules falls back to the rule-based verdict.
 """
 
 from __future__ import annotations
 
 import asyncio
+import logging
 from datetime import date
 
 from .agents.crop_stage import crop_stage_report
@@ -17,6 +18,8 @@ from .agents.market import market_report
 from .agents.weather import weather_report
 from .models import AgentReport, Decision, Field_, Verdict
 from .rules import all_rules_verified
+
+log = logging.getLogger("pantachevi.supervisor")
 
 DISCLAIMER_TE = (
     "PantaChevi ఒక సలహా సాధనం మాత్రమే, వ్యవసాయ నిపుణుల సలహాకు ప్రత్యామ్నాయం కాదు. "
@@ -133,7 +136,10 @@ def reconcile(intent: str, reports: list[AgentReport]) -> Verdict:
     )
 
 
-async def decide(field: Field_, question: str, today: date | None = None, store=None) -> Decision:
+async def decide(
+    field: Field_, question: str, today: date | None = None, store=None, converse=None
+) -> Decision:
+    from .llm_supervisor import SupervisorError, llm_verdict, supervisor_mode
     from .store import get_store
 
     store = store or await asyncio.to_thread(get_store)
@@ -145,13 +151,27 @@ async def decide(field: Field_, question: str, today: date | None = None, store=
         )
     )
     intent = detect_intent(question)
+    verdict = reconcile(intent, reports)  # always computed: it is the fallback
+    source, note = "rules", None
+    if supervisor_mode() == "bedrock":
+        try:
+            verdict = await asyncio.to_thread(llm_verdict, question, intent, reports, verdict, converse)
+            source = "bedrock"
+        except SupervisorError as exc:
+            note = f"Bedrock verdict not used: {exc}"
+        except Exception as exc:  # network, credentials, access denied, timeout
+            note = f"Bedrock unavailable ({exc.__class__.__name__}); rule-based verdict used."
+        if note:
+            log.warning(note)
     return Decision(
         field_id=field.id,
         question=question,
         intent=intent,
         reports=reports,
-        verdict=reconcile(intent, reports),
+        verdict=verdict,
         rules_verified=all_rules_verified(),
         disclaimer=DISCLAIMER,
         disclaimer_te=DISCLAIMER_TE,
+        supervisor=source,
+        supervisor_note=note,
     )
